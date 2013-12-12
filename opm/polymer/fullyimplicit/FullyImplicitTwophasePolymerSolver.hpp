@@ -72,11 +72,13 @@ namespace Opm {
         transmissibility() const;
         ADB
         computeFracFlow(int    phase,
-                        const std::vector<ADB>& kr) const;
+                        const std::vector<ADB>& kr,
+                        const SolutionState& state) const;
         ADB 
         accumSource(const int phase,
                     const std::vector<ADB>& kr,
-                    const std::vector<double>& src) const;
+                    const std::vector<double>& src,
+                    const SolutionState& state) const;
         ADB
         computeMassFlux(const int               phase,
                         const V&                trans,
