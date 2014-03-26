@@ -81,7 +81,6 @@ namespace Opm {
 
 
 
-
     ADB PolymerPropsAd::effectiveInvWaterVisc(const ADB& c,
 	                    				      const double* visc) const
     {
@@ -103,6 +102,23 @@ namespace Opm {
         return ADB::function(inv_mu_w_eff, jacs);
     }
 
+
+    V PolymerPropsAd::effectiveInvWaterViscWithShear(const V& c,
+                                                     const V& shear_mult,
+                                                     const double* visc) const
+    {
+       return shear_mult * effectiveInvWaterVisc(c, visc);
+
+    }
+
+
+    ADB PolymerPropsAd::effectiveInvWaterViscWithShear(const ADB& c,
+                                                       const ADB& shear_mult,
+                                                       const double* visc) const
+    {
+       return shear_mult * effectiveInvWaterVisc(c, visc);
+
+    }
 
 
 

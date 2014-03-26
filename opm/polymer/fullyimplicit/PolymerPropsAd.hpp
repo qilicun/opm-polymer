@@ -61,7 +61,15 @@ namespace Opm {
 		/// \return 			value of inverse effective water viscosity.
         ADB 
         effectiveInvWaterVisc(const ADB& c,const double* visc) const;
-		
+	
+        V
+        effectiveInvWaterViscWithShear(const V&c, 
+                                       const V& shear_mult, 
+                                       const double* visc) const;
+        ADB
+        effectiveInvWaterViscWithShear(const ADB&c, 
+                                       const ADB& shear_mult, 
+                                       const double* visc) const;
 		/// \param[in] c		Array of n polymer concentraion values.
 		/// \return 			Array of n mc values, here mc means m(c) * c.
         V 
