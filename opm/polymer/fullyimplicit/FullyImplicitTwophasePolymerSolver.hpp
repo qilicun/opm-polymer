@@ -200,7 +200,7 @@ namespace Opm {
         
         ADB
         shearMultFunc(const ADB& shear_mult,
-                      const ADB& eff_water_visc,
+                      const ADB& inv_wat_eff_visc,
                       const ADB& rk,
                       const ADB& krw,
                       const ADB& u_sq,
@@ -210,7 +210,7 @@ namespace Opm {
 
         ADB
         shearMultFunc(const ADB& shear_mult,
-                      const V& eff_water_visc,
+                      const V& inv_wat_eff_visc,
                       const V& rk,
                       const V& krw,
                       const V& u_sq,

@@ -915,7 +915,7 @@ namespace {
     ADB
     FullyImplicitTwophasePolymerSolver::
     shearMultFunc(const ADB& shear_mult,
-                  const ADB& eff_water_visc,
+                  const ADB& inv_wat_eff_visc,
                   const ADB& rk,
                   const ADB& krw,
                   const ADB& u_sq,
@@ -930,7 +930,7 @@ namespace {
         V   val = square_term.value().pow(double(0.5));
         M   jac = square_term.jac();
         square_term = ADB::function(val, jac);
-        fake_velocity = 6. * square_term / (shear_mult * eff_water_visc * rk);
+        fake_velocity = 6. * inv_wat_eff_visc * square_term / (shear_mult * rk);
         V new_shear_mult = polymer_props_ad_.shearMult(fake_velocity.value()); 
         return ADB::function(new_shear_mult, fake_velocity.jac());
     }
@@ -938,7 +938,7 @@ namespace {
     ADB
     FullyImplicitTwophasePolymerSolver::
     shearMultFunc(const ADB& shear_mult,
-                  const V& eff_water_visc,
+                  const V& inv_wat_eff_visc,
                   const V& rk,
                   const V& krw,
                   const V& u_sq,
@@ -950,7 +950,7 @@ namespace {
         ADB fake_velocity(ADB::null());
         V square_term(nc);
         square_term = (krw * u_sq / (sw * poro * perm)).pow(double(0.5));
-        fake_velocity = 6. * square_term / (shear_mult * eff_water_visc * rk);
+        fake_velocity = 6. * inv_wat_eff_visc * square_term / (shear_mult * rk);
         V new_shear_mult = polymer_props_ad_.shearMult(fake_velocity.value()); 
         return ADB::function(new_shear_mult, fake_velocity.jac());
     }
