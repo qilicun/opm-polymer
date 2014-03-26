@@ -199,7 +199,38 @@ namespace Opm {
         return ADB::function(ads, jacs);
     }
 
+    V
+    PolymerPropsAd::permReduction(const V& c, 
+                                  const V& cmax_cells) const
+    {
 
+        const int nc = c.size();
+
+        V one  = V::Ones(nc);
+        V ads = adsorption(c, cmax_cells);
+        double max_ads = polymer_props_.cMaxAds();
+        double res_factor = polymer_props_.resFactor();
+        double factor = (res_factor -1.) / max_ads;
+        V rk = one + factor * ads;
+        
+        return rk;
+    }
+
+
+    ADB
+    PolymerPropsAd::permReduction(const ADB& c,
+                                  const ADB& cmax_cells) const
+    {
+        const int nc = c.value().size();
+        V one = V::Ones(nc);
+        ADB ads = adsorption(c, cmax_cells);
+        V krw_eff = effectiveRelPerm(c.value(), cmax_cells.value(), krw.value());
+
+        double max_ads = polymer_props_.cMaxAds();
+        double res_factor = polymer_props_.resFactor();
+        double factor = (res_factor - 1.) / max_ads;
+        ADB rk = one + ads * factor; 
+    }
 
 
 
@@ -253,4 +284,14 @@ namespace Opm {
         return ADB::function(krw_eff, jacs);
     }
 
+    V
+    PolymerPropsAd::shearMult(const V& velocity) const
+    {
+        const int nc = velocity.size();
+        V shear_mult(nc);
+        for (int i = 0; i < nc; ++i) {
+            shear_mult(i) = polymer_props_.shearVrf(velocity(i));
+        }
+        return shear_mult;
+    }
 }// namespace Opm

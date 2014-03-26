@@ -85,6 +85,10 @@ namespace Opm {
 		/// \return						Array of n adsorption values.
         ADB
         adsorption(const ADB& c, const ADB& cmax_cells) const;
+        V
+        permReduction(const V& c, const V& cmax_cells) const;
+        ADB
+        permReduction(const ADB& c, const ADB& cmax_cells) const;
 
 		/// \param[in] c				Array of n polymer concentraion values.
 		/// \param[in] cmax_cells		Array of n polymer concentraion values
@@ -102,6 +106,9 @@ namespace Opm {
 		/// \return						Array of n adsorption values.
         ADB
         effectiveRelPerm(const ADB& c, const ADB& cmax_cells, const ADB& krw, const ADB& sw) const;
+
+        V
+        shearMult(const V& velocity) const;
 
     private:
         const PolymerProperties& polymer_props_;
