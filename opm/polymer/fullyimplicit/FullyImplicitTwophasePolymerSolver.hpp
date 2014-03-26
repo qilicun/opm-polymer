@@ -193,7 +193,30 @@ namespace Opm {
                  	const int            aix  );
         ADB 
         computeMc(const SolutionState& state) const;
+        
+        ADB
+        computeSquareGradP(const V& trans,
+                           const SolutionState& state) const;
+        
+        ADB
+        shearMultFunc(const ADB& shear_mult,
+                      const ADB& eff_water_visc,
+                      const ADB& rk,
+                      const ADB& krw,
+                      const ADB& u_sq,
+                      const ADB& sw,
+                      const V& poro,
+                      const V& perm) const;
 
+        ADB
+        shearMultFunc(const ADB& shear_mult,
+                      const V& eff_water_visc,
+                      const V& rk,
+                      const V& krw,
+                      const V& u_sq,
+                      const V& sw,
+                      const V& poro,
+                      const V& perm) const;
         ADB
         rockPorosity(const ADB& p) const;
 

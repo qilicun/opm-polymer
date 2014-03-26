@@ -889,8 +889,70 @@ namespace {
         return polymer_props_ad_.polymerWaterVelocityRatio(c);
     }
 
+    ADB
+    FullyImplicitTwophasePolymerSolver::computeSquareGradP(const V& trans, 
+                                                           const SolutionState& state) const
+    {
+        const int nc = grid_.number_of_cells;
+        V z(nc);
+        ADB u_sq(ADB::null());
+        ADB u(ADB::null());
+        // Compute z coordinates
+        for (int c = 0; c < nc; ++c){
+            z[c] = grid_.cell_centroids[c * 3 + 2];
+        }
+		std::vector<ADB> press = computePressures(state);
+        const ADB rhow = fluidDensity(0, state.pressure);
+        const ADB rhoavg = ops_.caver * rhow;
+        const ADB dp = ops_.ngrad * press[0]
+                       - gravity_[2] * (rhoavg * (ops_.ngrad * z.matrix()));
+        const V face_areas = Eigen::Map<const V>(&grid_.face_areas()[0], nc);
+        u = trans * dp / face_areas;
+        u_sq = ops_.caver * (0.5 * u * u);
+        return u_sq;
+    }
 
+    ADB
+    FullyImplicitTwophasePolymerSolver::
+    shearMultFunc(const ADB& shear_mult,
+                  const ADB& eff_water_visc,
+                  const ADB& rk,
+                  const ADB& krw,
+                  const ADB& u_sq,
+                  const ADB& sw,
+                  const V& poro,
+                  const V& perm) const;
+    {
+        const int nc = grid_.number_of_grid;
+        ADB fake_velocity(ADB::null());
+        ADB square_term(ADB::null);
+        square_term = krw * u_sq / (sw * poro * perm);
+        V   val = square_term.value().pow(double(0.5));
+        M   jac = square_term.jac();
+        square_term = ADB::function(val, jac);
+        fake_velocity = 6. * square_term / (shear_mult * eff_water_visc * rk);
+        V new_shear_mult = polymer_props_ad_.shearMult(fake_velocity.value()); 
+        return ADB::function(new_shear_mult, fake_velocity.jac());
+    }
 
-
+    ADB
+    FullyImplicitTwophasePolymerSolver::
+    shearMultFunc(const ADB& shear_mult,
+                  const V& eff_water_visc,
+                  const V& rk,
+                  const V& krw,
+                  const V& u_sq,
+                  const V& sw,
+                  const V& poro,
+                  const V& perm) const;
+    {
+        const int nc = grid_.number_of_grid;
+        ADB fake_velocity(ADB::null());
+        V square_term(nc);
+        square_term = (krw * u_sq / (sw * poro * perm)).pow(double(0.5));
+        fake_velocity = 6. * square_term / (shear_mult * eff_water_visc * rk);
+        V new_shear_mult = polymer_props_ad_.shearMult(fake_velocity.value()); 
+        return ADB::function(new_shear_mult, fake_velocity.jac());
+    }
 
 } //namespace Opm
