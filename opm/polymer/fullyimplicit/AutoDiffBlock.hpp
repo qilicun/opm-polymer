@@ -172,6 +172,21 @@ namespace Opm
             return vars;
         }
 
+        AutoDiffBlock pow(const Scalar& index)
+        {
+            if (jac_.empty()) {
+                return constant(val_.pow(index));
+            }
+            int num_blocks = jac_.size();
+            std::vector<M> jac(num_blocks);
+            typedef Eigen::DiagonalMatrix<Scalar, Eigen::Dynamic> D;
+            D D1 = (index*val_.pow(index-1)).matrix().asDiagonal();
+            for(int block = 0; block < num_blocks; ++block) {
+                jac[block] = D1 * jac_[block];
+            }
+            return AutoDiffBlock(val_.pow(index), jac);
+        }
+
         /// Elementwise operator +=
         AutoDiffBlock& operator+=(const AutoDiffBlock& rhs)
         {

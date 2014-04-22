@@ -114,9 +114,16 @@ namespace Opm {
 		/// \return						Array of n adsorption values.
         ADB
         effectiveRelPerm(const ADB& c, const ADB& cmax_cells, const ADB& krw, const ADB& sw) const;
+        const V
+        shearWaterVelocity() const;
+        const V
+        shearVrf() const;
 
         V
         shearMult(const V& velocity) const;
+        
+        ADB
+        shearMult(const ADB& velocity) const;
 
     private:
         const PolymerProperties& polymer_props_;

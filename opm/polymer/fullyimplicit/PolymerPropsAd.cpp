@@ -107,7 +107,7 @@ namespace Opm {
                                                      const V& shear_mult,
                                                      const double* visc) const
     {
-       return shear_mult * effectiveInvWaterVisc(c, visc);
+       return effectiveInvWaterVisc(c, visc) / shear_mult;
 
     }
 
@@ -116,7 +116,7 @@ namespace Opm {
                                                        const ADB& shear_mult,
                                                        const double* visc) const
     {
-       return shear_mult * effectiveInvWaterVisc(c, visc);
+       return effectiveInvWaterVisc(c, visc) / shear_mult;
 
     }
 
@@ -237,15 +237,16 @@ namespace Opm {
     PolymerPropsAd::permReduction(const ADB& c,
                                   const ADB& cmax_cells) const
     {
-        const int nc = c.value().size();
+        const int nc = c.size();
         V one = V::Ones(nc);
         ADB ads = adsorption(c, cmax_cells);
-        V krw_eff = effectiveRelPerm(c.value(), cmax_cells.value(), krw.value());
 
         double max_ads = polymer_props_.cMaxAds();
         double res_factor = polymer_props_.resFactor();
         double factor = (res_factor - 1.) / max_ads;
         ADB rk = one + ads * factor; 
+
+        return rk;
     }
 
 
@@ -299,7 +300,21 @@ namespace Opm {
 
         return ADB::function(krw_eff, jacs);
     }
-
+    
+    const V
+    PolymerPropsAd::shearWaterVelocity() const
+    {
+        const std::vector<double> vw = polymer_props_.shearWaterVelocity();
+        const V watervelo = Eigen::Map<const V>(&vw[0], vw.size());
+        return watervelo;
+    }
+    const V
+    PolymerPropsAd::shearVrf() const
+    {
+        const std::vector<double>vrf = polymer_props_.shearVrf();
+        const V shear_vrf = Eigen::Map<const V>(&vrf[0], vrf.size());
+        return shear_vrf;
+    }
     V
     PolymerPropsAd::shearMult(const V& velocity) const
     {
@@ -309,5 +324,26 @@ namespace Opm {
             shear_mult(i) = polymer_props_.shearVrf(velocity(i));
         }
         return shear_mult;
+    }
+
+    ADB
+    PolymerPropsAd::shearMult(const ADB& velocity) const
+    {
+        const int nc = velocity.size();
+        V shear_mult(nc);
+        V dshear_mult(nc);
+        for (int i = 0; i < nc; ++i) {
+            double sm = 0, dsm = 0;
+            polymer_props_.shearVrfWithDer(sm, dsm);
+            shear_mult(i) = sm;
+            dshear_mult(i) = dsm;
+        }
+        ADB::M dsm_diag = spdiag(dshear_mult);
+        const int num_blocks = velocity.numBlocks();
+        std::vector<ADB::M> jacs(num_blocks);
+        for ( int block = 0; block < num_blocks; ++block) {
+            jacs[block] = dsm_diag * velocity.derivative()[block];
+        }
+        return ADB::function(shear_mult, jacs);
     }
 }// namespace Opm

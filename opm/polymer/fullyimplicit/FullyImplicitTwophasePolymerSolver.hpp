@@ -103,6 +103,7 @@ namespace Opm {
             ADB             pressure;
             std::vector<ADB> saturation;
             ADB             concentration;
+            ADB             shear_mult;
             ADB             qs;
             ADB             bhp;
         };
@@ -139,7 +140,7 @@ namespace Opm {
                       const WellState&    xw);
         void
         assemble(const V&               pvdt,
-                 const PolymerState&    x,
+                 PolymerState&    x,
                  const WellState&       xw,
                  const std::vector<double>& polymer_inflow,
 				 std::vector<double>& src);
@@ -197,26 +198,20 @@ namespace Opm {
         ADB
         computeSquareGradP(const V& trans,
                            const SolutionState& state) const;
-        
-        ADB
-        shearMultFunc(const ADB& shear_mult,
-                      const ADB& inv_wat_eff_visc,
-                      const ADB& rk,
-                      const ADB& krw,
-                      const ADB& u_sq,
-                      const ADB& sw,
-                      const V& poro,
-                      const V& perm) const;
+        void
+        computeShearMult(PolymerState& x,
+                         const SolutionState& state, 
+                         const V& u_sq);
 
         ADB
+        shearMultFunc(const SolutionState& state,
+                      const ADB& cmax,
+                      const ADB& u_sq) const;
+        ADB
         shearMultFunc(const ADB& shear_mult,
-                      const V& inv_wat_eff_visc,
-                      const V& rk,
-                      const V& krw,
-                      const V& u_sq,
-                      const V& sw,
-                      const V& poro,
-                      const V& perm) const;
+                      const SolutionState& state,
+                      const V& cmax_cells,
+                      const V& u_sq) const;
         ADB
         rockPorosity(const ADB& p) const;
 
