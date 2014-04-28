@@ -60,7 +60,15 @@ namespace Opm {
     {
     }
 
-
+    V PolymerPropsAd::viscMult(const V& c) const 
+    {
+        const int nc = c.size();
+        V vm(nc);
+        for (int i = 0; i < nc; ++i) {
+            vm(i) = polymer_props_.viscMult(c(i));
+        }
+        return vm;
+    }
 
 
 
@@ -113,7 +121,7 @@ namespace Opm {
 
 
     ADB PolymerPropsAd::effectiveInvWaterViscWithShear(const ADB& c,
-                                                       const ADB& shear_mult,
+                                                       const V& shear_mult,
                                                        const double* visc) const
     {
        return effectiveInvWaterVisc(c, visc) / shear_mult;
@@ -228,7 +236,7 @@ namespace Opm {
         double res_factor = polymer_props_.resFactor();
         double factor = (res_factor -1.) / max_ads;
         V rk = one + factor * ads;
-        
+       
         return rk;
     }
 
@@ -240,12 +248,13 @@ namespace Opm {
         const int nc = c.size();
         V one = V::Ones(nc);
         ADB ads = adsorption(c, cmax_cells);
-
+        std::cout << "rk -> ads:\n" << ads <<std::endl;
         double max_ads = polymer_props_.cMaxAds();
         double res_factor = polymer_props_.resFactor();
         double factor = (res_factor - 1.) / max_ads;
+        std::cout << "factor " << factor << std::endl;
         ADB rk = one + ads * factor; 
-
+        std::cout << "rk\n" << rk << std::endl;
         return rk;
     }
 
@@ -315,6 +324,7 @@ namespace Opm {
         const V shear_vrf = Eigen::Map<const V>(&vrf[0], vrf.size());
         return shear_vrf;
     }
+
     V
     PolymerPropsAd::shearMult(const V& velocity) const
     {

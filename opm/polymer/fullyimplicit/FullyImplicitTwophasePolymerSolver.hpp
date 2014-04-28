@@ -161,6 +161,7 @@ namespace Opm {
 
 		void
         computeMassFlux(const V&                trans,
+                  //      const V&                sh,
                         const ADB&              mc,
                         const ADB&              kro,
                         const ADB&              krw_eff,
@@ -194,7 +195,8 @@ namespace Opm {
                  	const int            aix  );
         ADB 
         computeMc(const SolutionState& state) const;
-        
+        V 
+        eclShearMult(const V& trans, const SolutionState& state) const;
         ADB
         computeSquareGradP(const V& trans,
                            const SolutionState& state) const;

@@ -68,7 +68,7 @@ namespace Opm {
                                        const double* visc) const;
         ADB
         effectiveInvWaterViscWithShear(const ADB&c, 
-                                       const ADB& shear_mult, 
+                                       const V& shear_mult, 
                                        const double* visc) const;
 		/// \param[in] c		Array of n polymer concentraion values.
 		/// \return 			Array of n mc values, here mc means m(c) * c.
@@ -79,6 +79,7 @@ namespace Opm {
 		/// \return 			Array of n mc values, here mc means m(c) * c.
         ADB
         polymerWaterVelocityRatio(const ADB& c) const;
+        V viscMult(const V& c) const; 
 
 		/// \param[in] c				Array of n polymer concentraion values.
 		/// \param[in] cmax_cells		Array of n polymer concentraion values

@@ -129,7 +129,7 @@ namespace {
 //        , mob_(std::vector<ADB>(fluid.numPhases() + 1, ADB::null()))
 		, cmax_(V::Zero(grid.number_of_cells))
         , rq_(fluid.numPhases() + 1)
-        , residual_( { std::vector<ADB>(fluid.numPhases() + 2, ADB::null()), ADB::null(), ADB::null()})
+        , residual_( { std::vector<ADB>(fluid.numPhases() + 1, ADB::null()), ADB::null(), ADB::null()})
      {
      }
 
@@ -272,7 +272,7 @@ namespace {
         //    well bottom-hole pressure
         // Note that oil is assumed to always be present, but is never
         // a primary variable.
-        std::vector<int> bpat(np + 2, nc);
+        std::vector<int> bpat(np + 1, nc);
         bpat.push_back(xw.bhp().size() * np);
         bpat.push_back(xw.bhp().size());
         
@@ -296,9 +296,9 @@ namespace {
         state.concentration = ADB::constant(c);
 
         // Shear multiplier.
-        assert(not x.shear_mult().empty());
-        const V sm = Eigen::Map<const V>(&x.shear_mult()[0], nc);
-        state.shear_mult = ADB::constant(sm);
+//        assert(not x.shear_mult().empty());
+//        const V sm = Eigen::Map<const V>(&x.shear_mult()[0], nc);
+//        state.shear_mult = ADB::constant(sm);
 
         // Well rates.
         assert (not xw.wellRates().empty());
@@ -329,7 +329,7 @@ namespace {
         const int np = x.numPhases();
 
         std::vector<V> vars0;
-        vars0.reserve(np + 4); 
+        vars0.reserve(np + 3); 
 
         // Initial pressure.
         assert (not x.pressure().empty());
@@ -347,9 +347,9 @@ namespace {
         const V c = Eigen::Map<const V>(& x.concentration()[0], nc);
         vars0.push_back(c);
 
-        assert (not x.shear_mult().empty());
-        const V sm = Eigen::Map<const V>(& x.shear_mult()[0], nc);
-        vars0.push_back(sm);       
+//        assert (not x.shear_mult().empty());
+//        const V sm = Eigen::Map<const V>(& x.shear_mult()[0], nc);
+//        vars0.push_back(sm);       
 
         // Initial well rates.
         assert (not xw.wellRates().empty());
@@ -388,7 +388,7 @@ namespace {
         state.concentration = vars[nextvar++];
 
         // Shear multiplier.
-        state.shear_mult = vars[nextvar++];
+//        state.shear_mult = vars[nextvar++];
 
         // Qs.
         state.qs = vars[ nextvar++ ];
@@ -454,31 +454,31 @@ namespace {
 			 std::vector<double>& src)
     {
         // Create the primary variables.
-        const SolutionState shear_state = variableState(x, xw);
+        const SolutionState state = variableState(x, xw);
 
         const V trans = subset(transmissibility(), ops_.internal_faces);
         // Compute Shear multiplier.
 //        std::cout << "Starting u_sq:\n";
-        const ADB u_sq = computeSquareGradP(trans, shear_state);
+//        const ADB u_sq = computeSquareGradP(trans, state);
 //        std::cout << "Starting ShearMult:\n";
-        computeShearMult(x, shear_state, u_sq.value());
+//        computeShearMult(x, state, u_sq.value());
 //        std::cout << "Starting variableState:\n";
-        const SolutionState state = variableState(x, xw);
-
+//        const SolutionState state = variableState(x, xw);
+//        std::cout << "shear mult value: \n" << state.shear_mult.value() << std::endl;
 		computeAccum(state, 1);
         // -------- Mass balance equations for water and oil --------
         const std::vector<ADB> kr = computeRelPerm(state);
 		const ADB cmax = ADB::constant(cmax_, state.concentration.blockPattern());
         const ADB krw_eff = polymer_props_ad_.effectiveRelPerm(state.concentration, cmax, kr[0], state.saturation[0]);
         const ADB mc = computeMc(state);
-        
+        const V sh = Eigen::Map<const V>(&x.shear_mult()[0], grid_.number_of_cells); 
         computeMassFlux(trans, mc, kr[1], krw_eff, state);
 //        const V face_areas = Eigen::Map<const V>(&grid_.face_areas[0], grid_.number_of_faces);
 //        const V internal_face_areas = subset(face_areas, ops_.internal_faces);
     //    std::cout << "Water Equation Face Flux:\n";
     //    std::cout << rq_[0].mflux.value() << std::endl;
    //     std::cout << "Water Equation Face Velocity:\n";
-   //     std::cout << rq_[0].mflux.value() / internal_face_areas << std::endl;
+     //   std::cout << rq_[0].mflux.value() / internal_face_areas << std::endl;
    //     exit(1);
         residual_.mass_balance[0] = pvdt*(rq_[0].accum[1] - rq_[0].accum[0])
                                     + ops_.div*rq_[0].mflux;
@@ -487,7 +487,8 @@ namespace {
         residual_.mass_balance[2] = pvdt*(rq_[2].accum[1] - rq_[2].accum[0])
                                     + ops_.div*rq_[2].mflux;
         //Shear multiplier equation.
-        residual_.mass_balance[3] = shearMultFunc(state, cmax, u_sq); 
+ //       residual_.mass_balance[3] = shearMultFunc(state, cmax, u_sq); 
+//        std::cout << residual_.mass_balance[3] << std::endl;
         // -------- Well equation, and well contributions to the mass balance equations --------
 
         // Contribution to mass balance will have to wait.
@@ -649,16 +650,20 @@ namespace {
 
     void
     FullyImplicitTwophasePolymerSolver::computeMassFlux(const V&                trans,
+                                               //         const V&                sh,
                                                         const ADB&              mc,
                                                         const ADB&              kro,
                                                         const ADB&              krw_eff,
                                                         const SolutionState&    state )
     {
         const double* mus = fluid_.viscosity();
+ //       ADB inv_wat_eff_vis = polymer_props_ad_.effectiveInvWaterViscWithShear(state.concentration, sh, mus);
         ADB inv_wat_eff_vis = polymer_props_ad_.effectiveInvWaterVisc(state.concentration, mus);
-        rq_[0].mob = krw_eff * inv_wat_eff_vis / state.shear_mult;
+        V   shear_mult = eclShearMult(trans, state);
+//        std::cout << "shear_mult" << shear_mult << std::endl;
+        rq_[0].mob = krw_eff * inv_wat_eff_vis / shear_mult ;
         rq_[1].mob = kro / V::Constant(kro.size(), 1, mus[1]);
-        rq_[2].mob = mc * krw_eff * inv_wat_eff_vis / state.shear_mult;
+        rq_[2].mob = mc * krw_eff * inv_wat_eff_vis / shear_mult;
 
         const int nc = grid_.number_of_cells; 
         V z(nc);
@@ -798,8 +803,8 @@ namespace {
         varstart += dsw.size();
         const V dc = subset(dx, Span(nc, 1, varstart));
         varstart += dc.size();
-        const V dsm = subset(dx, Span(nc, 1, varstart));
-        varstart += dsm.size();
+//        const V dsm = subset(dx, Span(nc, 1, varstart));
+//        varstart += dsm.size();
         const V dqs = subset(dx, Span(np*nw, 1, varstart));
         varstart += dqs.size();
         const V dbhp = subset(dx, Span(nw, 1, varstart));
@@ -830,10 +835,10 @@ namespace {
         const V c = (c_old - dc).max(zero);
         std::copy(&c[0], &c[0] + nc, state.concentration().begin());
 
-        // Shear multiplier updates.
-        const V sm_old = Eigen::Map<const V>(&state.shear_mult()[0], nc);
-        const V sm = (sm_old - dsm).max(0.1); 
-        std::copy(&sm[0], &sm[0] + nc, state.shear_mult().begin());
+//        // Shear multiplier updates.
+//        const V sm_old = Eigen::Map<const V>(&state.shear_mult()[0], nc);
+//        const V sm = (sm_old - dsm).max(0.1); 
+//        std::copy(&sm[0], &sm[0] + nc, state.shear_mult().begin());
         // Qs update.
         // Since we need to update the wellrates, that are ordered by wells,
         // from dqs which are ordered by phase, the simplest is to compute
@@ -926,6 +931,38 @@ namespace {
         return polymer_props_ad_.polymerWaterVelocityRatio(c);
     }
 
+    V
+    FullyImplicitTwophasePolymerSolver::eclShearMult(const V& trans, const SolutionState& state) const
+    {
+        const int nf = grid_.number_of_faces;
+        const int nc = grid_.number_of_cells;
+        V z(nc);
+        ADB u_sq(ADB::null());
+        ADB u(ADB::null());
+        // Compute z coordinates
+        for (int c = 0; c < nc; ++c){
+            z[c] = grid_.cell_centroids[c * 3 + 2];
+        }
+		std::vector<ADB> press = computePressures(state);
+        const ADB rhow = fluidDensity(0, state.pressure);
+        const ADB rhoavg = ops_.caver * rhow;
+        const ADB dp = ops_.ngrad * press[0]
+                       - gravity_[2] * (rhoavg * (ops_.ngrad * z.matrix()));
+        
+        const V face_areas = Eigen::Map<const V>(&grid_.face_areas[0], nf);
+        const V internal_face_areas = subset(face_areas, ops_.internal_faces);
+        u = trans * dp / internal_face_areas;
+        u_sq = ops_.div * u;
+
+        V poro = V::Constant(grid_.number_of_cells, 1, *fluid_.porosity());
+//        std::cout << "velocity:\n" << u_sq.value();
+        V visc_mult = polymer_props_ad_.viscMult(state.concentration.value());
+        V sh = polymer_props_ad_.shearMult(u_sq.value().abs()/poro);
+//        std::cout << "sh:\n" << sh <<std::endl;
+        const V one = V::Ones(grid_.number_of_cells);
+        return (one + (visc_mult-one) * sh) / visc_mult;
+    }
+    
     ADB
     FullyImplicitTwophasePolymerSolver::computeSquareGradP(const V& trans, 
                                                            const SolutionState& state) const
@@ -947,11 +984,6 @@ namespace {
         
         const V face_areas = Eigen::Map<const V>(&grid_.face_areas[0], nf);
         const V internal_face_areas = subset(face_areas, ops_.internal_faces);
-//        std::cout << "trans size: " << trans.size() << std::endl;
-//      std::cout << trans << std::endl;
-//        std::cout << "face_areas size: " << face_areas.size() << std::endl;
-//        std::cout << "dp size: " << dp.size() << std::endl;
-//      std::cout << face_areas << std::endl;
         u = trans * dp / internal_face_areas;
         u_sq = ops_.div * (u * u);
         return u_sq;
@@ -964,17 +996,20 @@ namespace {
         const int nc = grid_.number_of_cells;
         // update parameters.
         ADB sw = state.saturation[0];
+      
         ADB rk = polymer_props_ad_.permReduction(state.concentration, cmax);
-        V poro = V::Constant(grid_.number_of_cells, 1, *fluid_.porosity());
+        V poro = V::Constant(nc, 1, *fluid_.porosity());
         V perm = V::Constant(nc, 1, *fluid_.permeability());
         const std::vector<ADB> kr = computeRelPerm(state);
         const double* mus = fluid_.viscosity();
         const ADB inv_wat_eff_vis = polymer_props_ad_.effectiveInvWaterVisc(state.concentration, mus);
         ADB eps = ADB::constant(V::Constant(nc, 1e-9));
-        ADB square_term = kr[0]*u_sq / ((sw+eps)*poro*perm);
-        ADB fake_velocity = 6. * inv_wat_eff_vis * square_term.pow(double(0.5)) / (state.shear_mult * rk);
-
-        return state.shear_mult - polymer_props_ad_.shearMult(fake_velocity);
+        ADB square_term = kr[0]*u_sq / ((sw)*poro*perm).pow(0.5);
+        ADB sh = 6. * inv_wat_eff_vis * square_term / (state.shear_mult * rk.value());
+//        std::cout << "sh:\n" << sh << std::endl;
+        std::cout << "rk:\n" << rk << std::endl;
+        V zeros = V::Zero(nc);
+        return state.shear_mult - polymer_props_ad_.shearMult(sh) / polymer_props_ad_.shearMult(zeros);
     }
 
     ADB
@@ -997,40 +1032,38 @@ namespace {
 //        std::cout << vw << std::endl;
 //        std::cout << "vrf:\n";
 //        std::cout << vrf << std::endl;
-        ADB fake_velocity(ADB::null());
         V square_term(nc);
         square_term = (kr[0].value() * u_sq.abs() / ((sw ) * poro * perm)).pow(double(0.5));
 //        std::cout << "square_term:\n" << square_term << std::endl; 
 //        std::cout << "perm\n" << perm << std::endl;
 //        std::cout << "inv_wat_eff_vis * 6:\n" <<  6. * inv_wat_eff_vis << std::endl;
-        fake_velocity = 6. * inv_wat_eff_vis * square_term / (shear_mult * rk);
-        V new_shear_mult = polymer_props_ad_.shearMult(fake_velocity.value()); 
+        ADB sh = 6. * inv_wat_eff_vis * square_term / (shear_mult * rk);
+        V zeros = V::Zero(nc);
+        V new_shear_mult = polymer_props_ad_.shearMult(sh.value()) / polymer_props_ad_.shearMult(zeros); 
         
 //        std::cout << "water velocity for shear:\n";
 //        std::cout << fake_velocity.value() << std::endl;
 //        std::cout << "shear mult after iterploation:\n";
 //        std::cout << new_shear_mult << std::endl;
 
-        return shear_mult - ADB::function(new_shear_mult, fake_velocity.derivative());
+        return shear_mult - ADB::function(new_shear_mult, sh.derivative());
     }
 
     void
     FullyImplicitTwophasePolymerSolver::
     computeShearMult(PolymerState& x, const SolutionState& state, const V& u_sq)
     { 
-//        std::cout << "u_sq:\n";
-//        std::cout << u_sq << std::endl;
-        const int nc = state.shear_mult.size();
-//        std::cout << "nc = " << nc << std::endl;
+        const int nc = grid_.number_of_cells;
         std::vector<int> blocksize;
         blocksize.push_back(nc);
 //        std::cout << "starting creating shear mult variable:\n";
 //        std::cout << state.shear_mult << std::endl;
-        ADB shear_mult = ADB::variable(0, state.shear_mult.value(), blocksize);
-//        std::cout << "ADB shear_mult:\n";
-        const V cmax = Eigen::Map<const V>(& x.maxconcentration()[0], nc);
+        const V sh = Eigen::Map<const V>(&x.shear_mult()[0], nc);
+        ADB shear_mult = ADB::variable(0, sh, blocksize);
+//        std::cout << "ADB shear_mult:\n" << shear_mult << std::endl;
+//        const V cmax = Eigen::Map<const V>(& x.maxconcentration()[0], nc);
 //        std::cout << "compute shear mult func:\n"; 
-        ADB eqs = shearMultFunc(shear_mult, state, cmax, u_sq);
+        ADB eqs = shearMultFunc(shear_mult, state, cmax_, u_sq);
         double residual0 = eqs.value().matrix().lpNorm<Eigen::Infinity>();
         int iter = 0;
         double residual = residual0;
@@ -1053,7 +1086,7 @@ namespace {
             }
             shear_mult_value = shear_mult.value() - dshear;
             shear_mult = ADB::variable(0, shear_mult_value, blocksize);
-            eqs = shearMultFunc(shear_mult, state, cmax, u_sq);
+            eqs = shearMultFunc(shear_mult, state, cmax_, u_sq);
             residual = eqs.value().matrix().lpNorm<Eigen::Infinity>();
             std::cout << iter << "      "  << residual << std::endl;
         }
@@ -1063,8 +1096,10 @@ namespace {
         }
         if (residual < residual0) {
             std::copy(&shear_mult.value()[0], &shear_mult.value()[0] + nc, x.shear_mult().begin());
+//            return shear_mult.value();
         } else {
             std::copy(&shear_mult_value[0], &shear_mult_value[0] + nc, x.shear_mult().begin());
+//            return shear_mult_value;
         }
     }
 } //namespace Opm 
