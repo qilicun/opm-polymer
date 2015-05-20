@@ -119,7 +119,7 @@ namespace Opm
     {
         Opm::DeckKeywordConstPtr keyword = deck->getKeyword("WPOLYMER");
         
-        //        Schedule schedule(deck);
+        //Schedule schedule(deck);
         ScheduleConstPtr schedule = eclipseState->getSchedule();
         for (size_t recordNr = 0; recordNr < keyword->size(); recordNr++) {
             DeckRecordConstPtr record = keyword->getRecord(recordNr);
@@ -156,6 +156,9 @@ namespace Opm
         setInflowValues(deck, eclipseState, currentStep);
         
         std::unordered_map<std::string, double>::const_iterator map_it;
+        for (map_it = wellPolymerRate_.begin(); map_it != wellPolymerRate_.end(); ++map_it) {
+            std::cout << map_it->first << ": " << map_it->second << std::endl;
+        }
         // Extract concentrations and put into cell->concentration map.
         std::map<int, double> perfcell_conc;
         for (size_t i = 0; i < wellPolymerRate_.size(); ++i) {
@@ -164,12 +167,14 @@ namespace Opm
             // names.
             int wix = 0;
             for (; wix < wells.number_of_wells; ++wix) {
+                std::cout << "wells.name:  " << wells.name[wix] << std::endl;
                 map_it = wellPolymerRate_.find(wells.name[wix]);
-                if (map_it == wellPolymerRate_.end()) {
-                    OPM_THROW(std::runtime_error, "Could not find a match for well from WPOLYMER.");
-                } else {
+                if (map_it != wellPolymerRate_.end()) {
                     break;
                 }
+            }
+            if (wix == wells.number_of_wells) {
+                OPM_THROW(std::runtime_error, "Could not find a match for well from WPOLYMER.");
             }
             for (int j = wells.well_connpos[wix]; j < wells.well_connpos[wix+1]; ++j) {
                 const int perf_cell = wells.well_cells[j];
